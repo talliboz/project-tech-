@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Dashboard from '../../dashboard/Dashboard'
 import './App.css'
 
 const emptyDashboard = {
@@ -14,6 +15,8 @@ const emptyDashboard = {
 const apiUrl = import.meta.env.VITE_DASHBOARD_API_URL ?? '/api/dashboard'
 const demoTechnicianId = import.meta.env.VITE_DEMO_TECHNICIAN_ID ?? ''
 const demoPasskey = import.meta.env.VITE_DEMO_PASSKEY ?? ''
+const tabs = ['Dashboard', 'AR-Camera', 'Settings']
+const savedTheme = window.localStorage.getItem('techinno-theme')
 
 function normaliseDashboard(data) {
   return {
@@ -28,14 +31,19 @@ function normaliseDashboard(data) {
 }
 
 function App() {
+  const cameraVideoRef = useRef(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [technicianId, setTechnicianId] = useState('')
   const [passkey, setPasskey] = useState('')
   const [isPasskeyVisible, setIsPasskeyVisible] = useState(false)
   const [loginError, setLoginError] = useState('')
+  const [activeTab, setActiveTab] = useState('Dashboard')
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [theme, setTheme] = useState(savedTheme === 'dark' ? 'dark' : 'light')
   const [dashboard, setDashboard] = useState(emptyDashboard)
   const [status, setStatus] = useState('Connecting')
   const [lastUpdated, setLastUpdated] = useState(null)
+  const [cameraError, setCameraError] = useState('')
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -56,6 +64,10 @@ function App() {
   }, [])
 
   useEffect(() => {
+    window.localStorage.setItem('techinno-theme', theme)
+  }, [theme])
+
+  useEffect(() => {
     if (!isAuthenticated) {
       return undefined
     }
@@ -65,6 +77,52 @@ function App() {
 
     return () => window.clearInterval(intervalId)
   }, [fetchDashboard, isAuthenticated])
+
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'AR-Camera') {
+      return undefined
+    }
+
+    let activeStream
+
+    const startCamera = async () => {
+      try {
+        setCameraError('')
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setCameraError('Camera access is not supported by this browser.')
+          return
+        }
+
+        activeStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { ideal: 'environment' },
+          },
+        })
+
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = activeStream
+        }
+      } catch {
+        setCameraError(
+          'Camera permission was blocked or this page is not running over HTTPS.',
+        )
+      }
+    }
+
+    startCamera()
+
+    return () => {
+      activeStream?.getTracks().forEach((track) => {
+        track.stop()
+      })
+
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = null
+      }
+    }
+  }, [activeTab, isAuthenticated])
 
   const handleLogin = (event) => {
     event.preventDefault()
@@ -90,27 +148,114 @@ function App() {
     setLoginError('Check the technician ID and passkey, then try again.')
   }
 
-  const highestRisk = useMemo(() => {
-    const { high, medium, low } = dashboard.severityCount
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    setIsMenuOpen(false)
+  }
 
-    if (high > 0) {
-      return 'High'
+  const renderMainView = () => {
+    if (activeTab === 'AR-Camera') {
+      return (
+        <section className="workspace single-view" aria-label="AR camera prototype">
+          <div className="feature-panel">
+            <p className="eyebrow">AR-Camera</p>
+            <h1>Camera preview placeholder</h1>
+            <p>
+              Point a phone camera at a simulated marker or fault location. The prototype
+              overlays show where detection and confirmation prompts would appear.
+            </p>
+            <div className="camera-frame">
+              <video
+                ref={cameraVideoRef}
+                className="camera-video"
+                autoPlay
+                muted
+                playsInline
+                aria-label="Live AR camera preview"
+              />
+              <div className="scan-window camera-overlay">
+                <span className="fault-marker high">F1</span>
+              </div>
+              {cameraError.length > 0 && (
+                <p className="camera-error" role="alert">
+                  {cameraError}
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      )
     }
 
-    if (medium > 0) {
-      return 'Medium'
+    if (activeTab === 'Settings') {
+      return (
+        <section className="workspace single-view" aria-label="Settings">
+          <div className="feature-panel">
+            <p className="eyebrow">Settings</p>
+            <h1>Prototype controls</h1>
+            <p>
+              Configure demo credentials in the frontend environment file, then restart
+              the dev server to require a specific technician ID and passkey.
+            </p>
+            <dl className="settings-list">
+              <div>
+                <dt>Dashboard API</dt>
+                <dd>{apiUrl}</dd>
+              </div>
+              <div>
+                <dt>Credential mode</dt>
+                <dd>
+                  {demoTechnicianId && demoPasskey ? 'Configured' : 'Open prototype'}
+                </dd>
+              </div>
+              <div>
+                <dt>Refresh interval</dt>
+                <dd>5 seconds</dd>
+              </div>
+            </dl>
+
+            <div className="theme-setting">
+              <div>
+                <p className="eyebrow">Appearance</p>
+                <h2>Global theme</h2>
+                <p>Switch the whole prototype between light and dark mode.</p>
+              </div>
+              <fieldset className="theme-toggle">
+                <legend>Theme mode</legend>
+                <button
+                  type="button"
+                  aria-pressed={theme === 'light'}
+                  onClick={() => setTheme('light')}
+                >
+                  Light
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={theme === 'dark'}
+                  onClick={() => setTheme('dark')}
+                >
+                  Dark
+                </button>
+              </fieldset>
+            </div>
+          </div>
+        </section>
+      )
     }
 
-    if (low > 0) {
-      return 'Low'
-    }
-
-    return 'Clear'
-  }, [dashboard.severityCount])
+    return (
+      <Dashboard
+        dashboard={dashboard}
+        fetchDashboard={fetchDashboard}
+        lastUpdated={lastUpdated}
+        status={status}
+      />
+    )
+  }
 
   if (!isAuthenticated) {
     return (
-      <main className="login-shell">
+      <main className="login-shell" data-theme={theme}>
         <section className="login-page" aria-label="Dashboard sign in">
           <div className="login-brand">
             <div className="brand-lockup">
@@ -209,91 +354,48 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="workspace" aria-label="AR maintenance prototype">
-        <div className="viewport">
-          <div className="station-grid">
-            <div className="track-line" />
-            <div className="inspection-target">
-              <span className="fault-marker high">F1</span>
-              <span className="fault-marker medium">F2</span>
-              <span className="fault-marker low">F3</span>
-            </div>
-            <div className="overlay-card primary-alert">
-              <span>Fault overlay</span>
-              <strong>{highestRisk} risk detected</strong>
-            </div>
-            <div className="overlay-card tool-check">
-              <span>Tool check</span>
-              <strong>Scanner kit active</strong>
-            </div>
-          </div>
+    <main className="app-shell" data-theme={theme}>
+      <header className="app-header">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 15.5h3.1L10.4 7l3.2 12 2.1-7.5H19" />
+            </svg>
+          </span>
+          <span>Techinno AR</span>
         </div>
 
-        <aside className="dashboard-panel" aria-label="Dashboard">
-          <div className="panel-header">
-            <div>
-              <p className="eyebrow">Public transport AR</p>
-              <h1>Fault dashboard</h1>
+        <nav className="burger-nav" aria-label="Main navigation">
+          <button
+            className="burger-button"
+            type="button"
+            aria-expanded={isMenuOpen}
+            aria-controls="main-menu"
+            onClick={() => setIsMenuOpen((open) => !open)}
+          >
+            <span className="burger-lines" aria-hidden="true" />
+            Menu
+          </button>
+
+          {isMenuOpen && (
+            <div className="menu-popover" id="main-menu">
+              {tabs.map((tab) => (
+                <button
+                  className="menu-item"
+                  type="button"
+                  aria-current={activeTab === tab ? 'page' : undefined}
+                  key={tab}
+                  onClick={() => handleTabChange(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-            <span className={`status-pill ${status.toLowerCase()}`}>{status}</span>
-          </div>
+          )}
+        </nav>
+      </header>
 
-          <div className="total-card">
-            <span>Total faults</span>
-            <strong>{dashboard.totalFaults}</strong>
-          </div>
-
-          <div className="severity-grid">
-            <article className="severity-card high">
-              <span>High</span>
-              <strong>{dashboard.severityCount.high}</strong>
-            </article>
-            <article className="severity-card medium">
-              <span>Medium</span>
-              <strong>{dashboard.severityCount.medium}</strong>
-            </article>
-            <article className="severity-card low">
-              <span>Low</span>
-              <strong>{dashboard.severityCount.low}</strong>
-            </article>
-          </div>
-
-          <div className="fault-list">
-            <div className="section-heading">
-              <h2>Recent fault reports</h2>
-              <button type="button" onClick={fetchDashboard}>
-                Refresh
-              </button>
-            </div>
-
-            {dashboard.faults.length > 0 ? (
-              <ul>
-                {dashboard.faults.slice(-4).map((fault, index) => (
-                  <li key={fault.id ?? `${fault.severity}-${index}`}>
-                    <span className={`dot ${fault.severity ?? 'low'}`} />
-                    <div>
-                      <strong>{fault.title ?? fault.type ?? 'Reported fault'}</strong>
-                      <p>
-                        {fault.location ?? 'Unknown location'} - {fault.severity ?? 'low'}{' '}
-                        severity
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="empty-state">No live fault reports have been received yet.</p>
-            )}
-          </div>
-
-          <p className="timestamp">
-            {lastUpdated
-              ? `Last synced ${lastUpdated.toLocaleTimeString()}`
-              : 'Waiting for dashboard data'}
-          </p>
-        </aside>
-      </section>
+      {renderMainView()}
     </main>
   )
 }
