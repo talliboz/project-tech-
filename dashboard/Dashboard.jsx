@@ -1,4 +1,11 @@
-function Dashboard({ dashboard, fetchDashboard, lastUpdated, status }) {
+function Dashboard({
+  dashboard,
+  fetchDashboard,
+  lastUpdated,
+  status,
+  canDeleteFault,
+  onDeleteFault,
+}) {
   const { high, medium, low } = dashboard.severityCount
   const highestRisk = high > 0 ? 'High' : medium > 0 ? 'Medium' : low > 0 ? 'Low' : 'Clear'
 
@@ -72,6 +79,15 @@ function Dashboard({ dashboard, fetchDashboard, lastUpdated, status }) {
                       severity
                     </p>
                   </div>
+                  {canDeleteFault && (
+                    <button
+                      className="delete-fault-button"
+                      type="button"
+                      onClick={() => onDeleteFault(fault.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

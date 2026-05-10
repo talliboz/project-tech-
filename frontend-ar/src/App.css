@@ -97,6 +97,17 @@
   stroke-width: 2;
 }
 
+.role-pill {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 8px;
+  text-transform: none;
+}
+
 .login-copy {
   display: grid;
   gap: 20px;
@@ -338,6 +349,18 @@
   color: var(--accent);
 }
 
+.logout-item {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+  color: var(--high);
+}
+
+.logout-item:hover {
+  border-color: oklch(48% 0.15 28 / 0.28);
+  background: var(--high-soft);
+  color: var(--high);
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -485,6 +508,21 @@
   background: var(--surface-raised);
   padding: 28px;
   box-shadow: var(--shadow);
+}
+
+.report-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 18px;
+}
+
+.report-status {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
 }
 
 .feature-panel h1 {
@@ -763,6 +801,25 @@ button:hover {
 button:focus-visible {
   outline: 3px solid oklch(43% 0.07 190 / 0.22);
   outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.54;
+}
+
+.delete-fault-button {
+  flex: 0 0 auto;
+  margin-left: auto;
+  border-color: oklch(48% 0.15 28 / 0.28);
+  background: var(--high-soft);
+  color: var(--high);
+}
+
+.delete-fault-button:hover {
+  border-color: var(--high);
+  background: var(--high);
+  color: var(--surface-raised);
 }
 
 .theme-toggle {

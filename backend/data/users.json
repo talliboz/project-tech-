@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "users": [
+    {
+      "id": "usr_admin",
+      "technicianId": "admin",
+      "displayName": "Admin operator",
+      "role": "admin",
+      "enabled": true,
+      "passwordHash": "scrypt:v1:16384:8:1:b8wbDJYvScKMnDEGuudV1g:ct3P9EkkNd1lkJBerskZPbkO3VbqVjCOd8tZlQwAORDFxmxDi0Ax9ASIO0Ike6Bj3o9YD5IfC8KiPRldkvKBVg"
+    },
+    {
+      "id": "usr_engineer",
+      "technicianId": "engineer",
+      "displayName": "Field engineer",
+      "role": "engineer",
+      "enabled": true,
+      "passwordHash": "scrypt:v1:16384:8:1:zwhuS48GQlucC8_w4qJgxg:NmC_30Ujg49ApAkt74MfHAhYATNxecCC4GA1Mc7Y6Bpyrqt4ndlld07O2glqxdM3zIsKtfFjmV-W1FlNlubyag"
+    },
+    {
+      "id": "usr_viewer",
+      "technicianId": "viewer",
+      "displayName": "Dashboard viewer",
+      "role": "viewer",
+      "enabled": true,
+      "passwordHash": "scrypt:v1:16384:8:1:WqHDqMLfBv530C00EqtK2g:3LWuG8FaZdIFxtN79n64FII_vHdSFggfc-oFQfI1KdWE_mCotZ2OL8Guy-ZfXuCtn2isJjfYsOwQWjQ82fvSDw"
+    }
+  ]
+}

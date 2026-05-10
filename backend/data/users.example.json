@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "users": [
+    {
+      "id": "usr_example",
+      "technicianId": "example-user",
+      "displayName": "Example user",
+      "role": "viewer",
+      "enabled": true,
+      "passwordHash": "generate-with-npm-run-hash-password"
+    }
+  ]
+}

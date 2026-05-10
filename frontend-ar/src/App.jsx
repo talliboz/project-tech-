@@ -12,11 +12,31 @@ const emptyDashboard = {
   faults: [],
 }
 
-const apiUrl = import.meta.env.VITE_DASHBOARD_API_URL ?? '/api/dashboard'
-const demoTechnicianId = import.meta.env.VITE_DEMO_TECHNICIAN_ID ?? ''
-const demoPasskey = import.meta.env.VITE_DEMO_PASSKEY ?? ''
-const tabs = ['Dashboard', 'AR-Camera', 'Settings']
+const dashboardApiUrl = import.meta.env.VITE_DASHBOARD_API_URL ?? '/api/dashboard'
+const apiRootUrl = dashboardApiUrl.replace(/\/dashboard\/?$/, '')
+const loginApiUrl = `${apiRootUrl}/login`
+const faultApiUrl = `${apiRootUrl}/dashboard/faults`
+const roleTabs = {
+  admin: ['Dashboard'],
+  engineer: ['Dashboard', 'AR-Camera', 'Settings'],
+  viewer: ['Dashboard'],
+}
+const roleLabels = {
+  admin: 'Admin',
+  engineer: 'Engineer',
+  viewer: 'Viewer',
+}
+const tokenStorageKey = 'techinno-token'
+const userStorageKey = 'techinno-user'
 const savedTheme = window.localStorage.getItem('techinno-theme')
+
+function loadStoredUser() {
+  try {
+    return JSON.parse(window.localStorage.getItem(userStorageKey) ?? 'null')
+  } catch {
+    return null
+  }
+}
 
 function normaliseDashboard(data) {
   return {
@@ -32,11 +52,15 @@ function normaliseDashboard(data) {
 
 function App() {
   const cameraVideoRef = useRef(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const tokenFromStorage = window.localStorage.getItem(tokenStorageKey) ?? ''
+  const [isAuthenticated, setIsAuthenticated] = useState(tokenFromStorage.length > 0)
+  const [authToken, setAuthToken] = useState(tokenFromStorage)
+  const [currentUser, setCurrentUser] = useState(loadStoredUser)
   const [technicianId, setTechnicianId] = useState('')
   const [passkey, setPasskey] = useState('')
   const [isPasskeyVisible, setIsPasskeyVisible] = useState(false)
   const [loginError, setLoginError] = useState('')
+  const [faultReportStatus, setFaultReportStatus] = useState('')
   const [activeTab, setActiveTab] = useState('Dashboard')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [theme, setTheme] = useState(savedTheme === 'dark' ? 'dark' : 'light')
@@ -44,13 +68,34 @@ function App() {
   const [status, setStatus] = useState('Connecting')
   const [lastUpdated, setLastUpdated] = useState(null)
   const [cameraError, setCameraError] = useState('')
+  const currentRole = currentUser?.role ?? ''
+  const availableTabs = roleTabs[currentRole] ?? ['Dashboard']
+  const canSubmitFault = currentRole === 'engineer'
+  const canDeleteFault = currentRole === 'admin'
 
   const fetchDashboard = useCallback(async () => {
+    if (!authToken) {
+      setStatus('Offline')
+      return
+    }
+
     try {
       setStatus('Connecting')
-      const res = await fetch(apiUrl)
+      const res = await fetch(dashboardApiUrl, {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      })
 
       if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          window.localStorage.removeItem(tokenStorageKey)
+          window.localStorage.removeItem(userStorageKey)
+          setAuthToken('')
+          setCurrentUser(null)
+          setIsAuthenticated(false)
+        }
+
         throw new Error(`Dashboard request failed with ${res.status}`)
       }
 
@@ -61,11 +106,17 @@ function App() {
     } catch {
       setStatus('Offline')
     }
-  }, [])
+  }, [authToken])
 
   useEffect(() => {
     window.localStorage.setItem('techinno-theme', theme)
   }, [theme])
+
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab('Dashboard')
+    }
+  }, [activeTab, availableTabs])
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -124,32 +175,132 @@ function App() {
     }
   }, [activeTab, isAuthenticated])
 
-  const handleLogin = (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault()
+    setLoginError('')
 
-    const isConfiguredLogin =
-      demoTechnicianId.length > 0 &&
-      demoPasskey.length > 0 &&
-      technicianId === demoTechnicianId &&
-      passkey === demoPasskey
+    try {
+      const res = await fetch(loginApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ technicianId, passkey }),
+      })
 
-    const isPrototypeLogin =
-      demoTechnicianId.length === 0 &&
-      demoPasskey.length === 0 &&
-      technicianId.trim().length > 0 &&
-      passkey.trim().length > 0
+      if (!res.ok) {
+        throw new Error('Login failed')
+      }
 
-    if (isConfiguredLogin || isPrototypeLogin) {
-      setLoginError('')
+      const data = await res.json()
+      setAuthToken(data.token)
+      setCurrentUser(data.user)
+      window.localStorage.setItem(tokenStorageKey, data.token)
+      window.localStorage.setItem(userStorageKey, JSON.stringify(data.user))
       setIsAuthenticated(true)
+      setActiveTab('Dashboard')
+      setLoginError('')
+    } catch {
+      setLoginError('Check the technician ID and passkey, then try again.')
+    }
+  }
+
+  const submitSampleFault = async () => {
+    if (!authToken) {
+      setFaultReportStatus('Sign in before sending fault reports.')
       return
     }
 
-    setLoginError('Check the technician ID and passkey, then try again.')
+    if (!canSubmitFault) {
+      setFaultReportStatus('Only engineers can submit fault reports.')
+      return
+    }
+
+    setFaultReportStatus('Sending fault report...')
+
+    try {
+      const res = await fetch(faultApiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          title: 'Test report',
+          location: 'Central platform',
+          severity: 'medium',
+        }),
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          window.localStorage.removeItem(tokenStorageKey)
+          window.localStorage.removeItem(userStorageKey)
+          setAuthToken('')
+          setCurrentUser(null)
+          setIsAuthenticated(false)
+          throw new Error('Session expired. Sign in again to send fault reports.')
+        }
+
+        throw new Error(errorData.error || 'Unable to submit fault report')
+      }
+
+      setFaultReportStatus('Sample fault report sent successfully.')
+      fetchDashboard()
+    } catch (error) {
+      setFaultReportStatus(error.message)
+    }
+  }
+
+  const deleteFault = async (faultId) => {
+    if (!authToken || !canDeleteFault || !faultId) {
+      return
+    }
+
+    try {
+      const res = await fetch(`${faultApiUrl}/${encodeURIComponent(faultId)}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        if (res.status === 401) {
+          window.localStorage.removeItem(tokenStorageKey)
+          window.localStorage.removeItem(userStorageKey)
+          setAuthToken('')
+          setCurrentUser(null)
+          setIsAuthenticated(false)
+          throw new Error('Session expired. Sign in again to manage faults.')
+        }
+
+        throw new Error(errorData.error || 'Unable to delete fault')
+      }
+
+      fetchDashboard()
+    } catch (error) {
+      setFaultReportStatus(error.message)
+    }
   }
 
   const handleTabChange = (tab) => {
     setActiveTab(tab)
+    setIsMenuOpen(false)
+  }
+
+  const handleLogout = () => {
+    window.localStorage.removeItem(tokenStorageKey)
+    window.localStorage.removeItem(userStorageKey)
+    setAuthToken('')
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+    setTechnicianId('')
+    setPasskey('')
+    setFaultReportStatus('')
+    setActiveTab('Dashboard')
     setIsMenuOpen(false)
   }
 
@@ -194,25 +345,40 @@ function App() {
             <p className="eyebrow">Settings</p>
             <h1>Prototype controls</h1>
             <p>
-              Configure demo credentials in the frontend environment file, then restart
-              the dev server to require a specific technician ID and passkey.
+              Engineers can submit fault reports. Admins can delete fault reports from
+              the dashboard.
             </p>
             <dl className="settings-list">
               <div>
                 <dt>Dashboard API</dt>
-                <dd>{apiUrl}</dd>
+                <dd>{dashboardApiUrl}</dd>
               </div>
               <div>
-                <dt>Credential mode</dt>
-                <dd>
-                  {demoTechnicianId && demoPasskey ? 'Configured' : 'Open prototype'}
-                </dd>
+                <dt>Signed in as</dt>
+                <dd>{roleLabels[currentRole] ?? 'Unknown'}</dd>
               </div>
               <div>
                 <dt>Refresh interval</dt>
                 <dd>5 seconds</dd>
               </div>
             </dl>
+
+            <div className="report-panel">
+              <p className="eyebrow">Report a fault</p>
+              <p>
+                Only engineers can send fault reports to the backend.
+              </p>
+              <button
+                type="button"
+                onClick={submitSampleFault}
+                disabled={!canSubmitFault}
+              >
+                Send sample fault report
+              </button>
+              {faultReportStatus.length > 0 && (
+                <p className="report-status">{faultReportStatus}</p>
+              )}
+            </div>
 
             <div className="theme-setting">
               <div>
@@ -249,6 +415,8 @@ function App() {
         fetchDashboard={fetchDashboard}
         lastUpdated={lastUpdated}
         status={status}
+        canDeleteFault={canDeleteFault}
+        onDeleteFault={deleteFault}
       />
     )
   }
@@ -344,8 +512,7 @@ function App() {
             </button>
 
             <p className="login-note">
-              Prototype access only. Use any ID and passkey unless demo credentials are
-              configured.
+              Prototype access only. Sign in with an account issued by an admin.
             </p>
           </form>
         </section>
@@ -363,6 +530,7 @@ function App() {
             </svg>
           </span>
           <span>Techinno AR</span>
+          <span className="role-pill">{roleLabels[currentRole] ?? 'User'}</span>
         </div>
 
         <nav className="burger-nav" aria-label="Main navigation">
@@ -379,7 +547,7 @@ function App() {
 
           {isMenuOpen && (
             <div className="menu-popover" id="main-menu">
-              {tabs.map((tab) => (
+              {availableTabs.map((tab) => (
                 <button
                   className="menu-item"
                   type="button"
@@ -390,6 +558,9 @@ function App() {
                   {tab}
                 </button>
               ))}
+              <button className="menu-item logout-item" type="button" onClick={handleLogout}>
+                Log out
+              </button>
             </div>
           )}
         </nav>
