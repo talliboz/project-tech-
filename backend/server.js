@@ -168,6 +168,12 @@ app.post('/api/dashboard/faults', authenticateToken, authorizeEngineer, (req, re
   if (!fault || !fault.severity) {
     return res.status(400).json({ error: 'Fault object with severity is required.' })
   }
+  else if (!fault.title) {
+    return res.status(400).json({ error: 'Fault object with title is required.' })
+  }
+  else if (!fault.location) {
+    return res.status(400).json({ error: 'Fault object with location is required.' })
+  }
 
   const newFault = {
     id: fault.id ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`,
