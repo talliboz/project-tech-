@@ -39,7 +39,7 @@ function loadEnvFile() {
 loadEnvFile()
 
 const app = express()
-const port = process.env.PORT || 5000
+const port = process.env.PORT || 5050
 const secret = process.env.JWT_SECRET || 'techinno-secret-key'
 const authenticateToken = createAuthMiddleware(secret)
 const authorizeDashboard = requireRole('admin', 'engineer', 'viewer')

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import Dashboard from '../../dashboard/Dashboard'
+import { useCallback, useEffect, useState } from 'react'
+import Dashboard, { ArCamera } from '../../dashboard/Dashboard'
 import './App.css'
 
 const emptyDashboard = {
@@ -17,9 +17,9 @@ const apiRootUrl = dashboardApiUrl.replace(/\/dashboard\/?$/, '')
 const loginApiUrl = `${apiRootUrl}/login`
 const faultApiUrl = `${apiRootUrl}/dashboard/faults`
 const roleTabs = {
-  admin: ['Dashboard'],
-  engineer: ['Dashboard', 'AR-Camera', 'Settings'],
-  viewer: ['Dashboard'],
+  admin: ['Dashboard', 'AR Camera', 'Settings'],
+  engineer: ['Dashboard', 'AR Camera', 'Settings'],
+  viewer: ['Dashboard', 'AR Camera', 'Settings'],
 }
 const roleLabels = {
   admin: 'Admin',
@@ -51,7 +51,6 @@ function normaliseDashboard(data) {
 }
 
 function App() {
-  const cameraVideoRef = useRef(null)
   const tokenFromStorage = window.localStorage.getItem(tokenStorageKey) ?? ''
   const [isAuthenticated, setIsAuthenticated] = useState(tokenFromStorage.length > 0)
   const [authToken, setAuthToken] = useState(tokenFromStorage)
@@ -67,7 +66,6 @@ function App() {
   const [dashboard, setDashboard] = useState(emptyDashboard)
   const [status, setStatus] = useState('Connecting')
   const [lastUpdated, setLastUpdated] = useState(null)
-  const [cameraError, setCameraError] = useState('')
   const currentRole = currentUser?.role ?? ''
   const availableTabs = roleTabs[currentRole] ?? ['Dashboard']
   const canSubmitFault = currentRole === 'engineer'
@@ -128,52 +126,6 @@ function App() {
 
     return () => window.clearInterval(intervalId)
   }, [fetchDashboard, isAuthenticated])
-
-  useEffect(() => {
-    if (!isAuthenticated || activeTab !== 'AR-Camera') {
-      return undefined
-    }
-
-    let activeStream
-
-    const startCamera = async () => {
-      try {
-        setCameraError('')
-
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setCameraError('Camera access is not supported by this browser.')
-          return
-        }
-
-        activeStream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: {
-            facingMode: { ideal: 'environment' },
-          },
-        })
-
-        if (cameraVideoRef.current) {
-          cameraVideoRef.current.srcObject = activeStream
-        }
-      } catch {
-        setCameraError(
-          'Camera permission was blocked or this page is not running over HTTPS.',
-        )
-      }
-    }
-
-    startCamera()
-
-    return () => {
-      activeStream?.getTracks().forEach((track) => {
-        track.stop()
-      })
-
-      if (cameraVideoRef.current) {
-        cameraVideoRef.current.srcObject = null
-      }
-    }
-  }, [activeTab, isAuthenticated])
 
   const handleLogin = async (event) => {
     event.preventDefault()
@@ -305,39 +257,6 @@ function App() {
   }
 
   const renderMainView = () => {
-    if (activeTab === 'AR-Camera') {
-      return (
-        <section className="workspace single-view" aria-label="AR camera prototype">
-          <div className="feature-panel">
-            <p className="eyebrow">AR-Camera</p>
-            <h1>Camera preview placeholder</h1>
-            <p>
-              Point a phone camera at a simulated marker or fault location. The prototype
-              overlays show where detection and confirmation prompts would appear.
-            </p>
-            <div className="camera-frame">
-              <video
-                ref={cameraVideoRef}
-                className="camera-video"
-                autoPlay
-                muted
-                playsInline
-                aria-label="Live AR camera preview"
-              />
-              <div className="scan-window camera-overlay">
-                <span className="fault-marker high">F1</span>
-              </div>
-              {cameraError.length > 0 && (
-                <p className="camera-error" role="alert">
-                  {cameraError}
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
-      )
-    }
-
     if (activeTab === 'Settings') {
       return (
         <section className="workspace single-view" aria-label="Settings">
@@ -345,8 +264,8 @@ function App() {
             <p className="eyebrow">Settings</p>
             <h1>Prototype controls</h1>
             <p>
-              Engineers can submit fault reports. Admins can delete fault reports from
-              the dashboard.
+              Engineers can submit fault reports. Admins can delete fault reports from the
+              dashboard.
             </p>
             <dl className="settings-list">
               <div>
@@ -365,9 +284,7 @@ function App() {
 
             <div className="report-panel">
               <p className="eyebrow">Report a fault</p>
-              <p>
-                Only engineers can send fault reports to the backend.
-              </p>
+              <p>Only engineers can send fault reports to the backend.</p>
               <button
                 type="button"
                 onClick={submitSampleFault}
@@ -407,6 +324,10 @@ function App() {
           </div>
         </section>
       )
+    }
+
+    if (activeTab === 'AR Camera') {
+      return <ArCamera dashboard={dashboard} />
     }
 
     return (
@@ -558,7 +479,11 @@ function App() {
                   {tab}
                 </button>
               ))}
-              <button className="menu-item logout-item" type="button" onClick={handleLogout}>
+              <button
+                className="menu-item logout-item"
+                type="button"
+                onClick={handleLogout}
+              >
                 Log out
               </button>
             </div>

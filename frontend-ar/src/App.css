@@ -374,6 +374,27 @@
   grid-template-columns: 1fr;
 }
 
+.dashboard-workspace,
+.camera-workspace {
+  width: min(1180px, 100%);
+  min-height: calc(100svh - 98px);
+  margin: 0 auto;
+}
+
+.dashboard-workspace {
+  display: grid;
+  align-items: start;
+}
+
+.camera-workspace {
+  width: min(1180px, 100%);
+}
+
+.dashboard-stage {
+  display: grid;
+  gap: 16px;
+}
+
 .viewport {
   position: relative;
   overflow: hidden;
@@ -499,6 +520,53 @@
   box-shadow: var(--shadow);
 }
 
+.dashboard-page-panel {
+  display: grid;
+  width: 100%;
+  min-height: calc(100svh - 98px);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  padding: 28px;
+}
+
+.dashboard-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(0, 1.4fr);
+  gap: 12px;
+}
+
+.dashboard-camera-panel {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.camera-page-panel {
+  min-height: calc(100svh - 98px);
+  padding: 28px;
+}
+
+.camera-page-panel h1 {
+  font-size: 1.7rem;
+  line-height: 1.05;
+}
+
+.dashboard-camera-panel h2 {
+  font-size: 1.18rem;
+  line-height: 1.1;
+}
+
+.camera-guidance {
+  max-width: 58ch;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 .feature-panel {
   display: grid;
   align-content: start;
@@ -551,6 +619,18 @@
   background-size: 42px 42px;
 }
 
+.dashboard-camera-frame {
+  min-height: 360px;
+  background:
+    radial-gradient(circle at 50% 50%, oklch(43% 0.07 190 / 0.12), transparent 42%),
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px), var(--surface-panel);
+}
+
+.camera-page-frame {
+  min-height: clamp(420px, calc(100svh - 286px), 680px);
+}
+
 .camera-video {
   position: absolute;
   inset: 0;
@@ -558,6 +638,23 @@
   height: 100%;
   background: var(--surface-muted);
   object-fit: cover;
+}
+
+.camera-readout {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.camera-readout span {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+  padding: 9px 10px;
 }
 
 .scan-window {
@@ -573,6 +670,7 @@
     linear-gradient(var(--line) 1px, transparent 1px),
     linear-gradient(90deg, var(--line) 1px, transparent 1px), oklch(99% 0.004 185 / 0.16);
   background-size: 36px 36px;
+  pointer-events: none;
 }
 
 .scan-window .fault-marker {
@@ -580,11 +678,82 @@
   left: 38%;
 }
 
+.detection-canvas {
+  display: none;
+}
+
+.detected-fault-box {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  align-content: end;
+  gap: 2px;
+  min-width: 130px;
+  min-height: 74px;
+  border: 2px solid currentColor;
+  border-radius: 8px;
+  background: oklch(99% 0.004 185 / 0.1);
+  color: var(--accent);
+  padding: 8px;
+  box-shadow: 0 0 0 5px currentColor;
+  pointer-events: none;
+}
+
+.detected-fault-box.high {
+  color: var(--high);
+  box-shadow: 0 0 0 5px oklch(48% 0.15 28 / 0.18);
+}
+
+.detected-fault-box.medium {
+  color: var(--medium);
+  box-shadow: 0 0 0 5px oklch(55% 0.12 72 / 0.2);
+}
+
+.detected-fault-box.low {
+  color: var(--low);
+  box-shadow: 0 0 0 5px oklch(47% 0.095 155 / 0.2);
+}
+
+.detected-fault-box strong,
+.detected-fault-box span {
+  width: fit-content;
+  border-radius: 5px;
+  background: var(--surface-raised);
+  padding: 3px 6px;
+}
+
+.detected-fault-box strong {
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.detected-fault-box span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+
+.camera-scan-status {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 4;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 760;
+  padding: 12px;
+}
+
 .camera-error {
   position: absolute;
   right: 16px;
   bottom: 16px;
   left: 16px;
+  z-index: 4;
   border: 1px solid oklch(48% 0.15 28 / 0.28);
   border-radius: 8px;
   background: var(--high-soft);
@@ -621,7 +790,7 @@
 .settings-list dd {
   margin: 0;
   color: var(--text);
-  font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.86rem;
 }
 
@@ -654,6 +823,11 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
+}
+
+.dashboard-page-panel .panel-header {
+  align-items: center;
+  padding-bottom: 12px;
 }
 
 .eyebrow {
@@ -706,6 +880,7 @@
   display: flex;
   align-items: end;
   justify-content: space-between;
+  min-height: 132px;
   border: 1px solid var(--text);
   border-radius: 8px;
   background: var(--text);
@@ -736,16 +911,18 @@
 .severity-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
+  gap: 12px;
 }
 
 .severity-card {
   display: grid;
-  gap: 8px;
+  align-content: space-between;
+  gap: 18px;
   min-width: 0;
+  min-height: 132px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 12px;
+  padding: 16px;
 }
 
 .severity-card strong {
@@ -770,12 +947,13 @@
 
 .fault-list {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
-  min-height: 210px;
+  min-height: 360px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-raised);
-  padding: 16px;
+  padding: 18px;
 }
 
 button {
@@ -856,6 +1034,7 @@ button:disabled {
 
 ul {
   display: grid;
+  align-content: start;
   gap: 12px;
   margin: 0;
   padding: 0;
@@ -866,6 +1045,11 @@ li {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
 }
 
 .fault-list li strong {
@@ -928,6 +1112,24 @@ li p,
 
   .workspace {
     grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .dashboard-workspace,
+  .camera-workspace {
+    min-height: auto;
+  }
+
+  .dashboard-page-panel {
+    width: 100%;
+    min-height: auto;
+  }
+
+  .dashboard-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .camera-page-panel {
     min-height: auto;
   }
 
@@ -996,8 +1198,21 @@ li p,
     min-height: 320px;
   }
 
+  .camera-page-frame {
+    min-height: 64svh;
+  }
+
+  .camera-readout {
+    grid-template-columns: 1fr;
+  }
+
   .severity-grid {
     grid-template-columns: 1fr;
+  }
+
+  .total-card,
+  .severity-card {
+    min-height: 108px;
   }
 
   .panel-header,
