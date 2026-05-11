@@ -263,15 +263,8 @@ function App() {
           <div className="feature-panel">
             <p className="eyebrow">Settings</p>
             <h1>Prototype controls</h1>
-            <p>
-              Engineers can submit fault reports. Admins can delete fault reports from the
-              dashboard.
-            </p>
+            <p>Manage role access, reporting, and appearance for the demo environment.</p>
             <dl className="settings-list">
-              <div>
-                <dt>Dashboard API</dt>
-                <dd>{dashboardApiUrl}</dd>
-              </div>
               <div>
                 <dt>Signed in as</dt>
                 <dd>{roleLabels[currentRole] ?? 'Unknown'}</dd>
@@ -284,7 +277,7 @@ function App() {
 
             <div className="report-panel">
               <p className="eyebrow">Report a fault</p>
-              <p>Only engineers can send fault reports to the backend.</p>
+              <p>Engineers can send a sample report into the live dashboard stream.</p>
               <button
                 type="button"
                 onClick={submitSampleFault}
@@ -301,7 +294,7 @@ function App() {
               <div>
                 <p className="eyebrow">Appearance</p>
                 <h2>Global theme</h2>
-                <p>Switch the whole prototype between light and dark mode.</p>
+                <p>Set the interface theme globally.</p>
               </div>
               <fieldset className="theme-toggle">
                 <legend>Theme mode</legend>
